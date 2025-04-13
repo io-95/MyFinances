@@ -10,12 +10,14 @@ from backend.core.service.api_keys.get import get_api_key_by_id
 from backend.core.service.permissions.scopes import get_permissions_from_request
 
 from backend.core.types.requests import WebRequest
+from backend.decorators import web_require_scopes
 
 
 @require_http_methods(["POST"])
+@web_require_scopes("api_keys:write")
 def generate_api_key_endpoint(request: WebRequest) -> HttpResponse:
     name = request.POST.get("name")
-    expiry = request.POST.get("expiry")
+    expires = request.POST.get("expires")
     description = request.POST.get("description")
     administrator_toggle = True if request.POST.get("administrator") == "on" else False
     administrator_type = request.POST.get("administrator_type")
@@ -27,7 +29,7 @@ def generate_api_key_endpoint(request: WebRequest) -> HttpResponse:
         request.user.logged_in_as_team or request.user,
         name,
         permissions,
-        expires=expiry,
+        expires=expires,
         description=description,
         administrator_toggle=administrator_toggle,
         administrator_type=administrator_type,

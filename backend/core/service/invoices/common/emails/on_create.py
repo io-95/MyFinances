@@ -11,7 +11,7 @@ from backend.core.utils.service_retry import retry_handler
 from settings.helpers import send_email, get_var
 
 """
-DOCS: https://docs.myfinances.cloud/user-guide/emails/templates/
+DOCS: https://strelix.link/mfd/user-guide/emails/templates/
 (please update if any variables are changed)
 """
 
@@ -35,7 +35,7 @@ def on_create_invoice_email_service(users_email: str, invoice: Invoice) -> OnCre
     user_data = {
         "first_name": invoice.client_to.name.split(" ")[0] if invoice.client_to else invoice.client_name,
         "invoice_id": invoice.id,
-        "invoice_ref": invoice.reference or invoice.invoice_number or invoice.id,
+        "invoice_ref": invoice.reference or invoice.id,
         "due_date": invoice.date_due.strftime("%A, %B %d, %Y"),
         "amount_due": invoice.get_total_price(),
         "currency": invoice.currency,

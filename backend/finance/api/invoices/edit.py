@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from django.contrib import messages
 from django.http import HttpRequest, JsonResponse, HttpResponse
@@ -46,7 +47,6 @@ def edit_invoice(request: HtmxHttpRequest):
         "self_county": request.POST.get("from_county"),
         "self_country": request.POST.get("from_country"),
         "notes": request.POST.get("notes"),
-        "invoice_number": request.POST.get("invoice_number"),
         "vat_number": request.POST.get("vat_number"),
         "reference": request.POST.get("reference"),
         "sort_code": request.POST.get("sort_code"),
@@ -86,7 +86,7 @@ def change_status(request: HtmxHttpRequest, invoice_id: int, status: str) -> Htt
     except Invoice.DoesNotExist:
         return return_message(request, "Invoice not found")
 
-    if request.user.logged_in_as_team and request.user.logged_in_as_team != invoice.organization or request.user != invoice.user:
+    if not invoice.has_access(request.user):
         return return_message(request, "You don't have permission to make changes to this invoice.")
 
     if status not in ["paid", "draft", "pending"]:
@@ -95,8 +95,7 @@ def change_status(request: HtmxHttpRequest, invoice_id: int, status: str) -> Htt
     if invoice.status == status:
         return return_message(request, f"Invoice status is already {status}")
 
-    invoice.status = status
-    invoice.save()
+    invoice.set_status(status)
 
     send_message(request, f"Invoice status been changed to <strong>{status}</strong>", success=True)
 

@@ -151,9 +151,13 @@ class ExpiresBase(models.Model):
     @property
     def remaining_active_time(self):
         """Return the remaining time until expiration, or None if already expired or no expiration set."""
-        if self.expires and self.expires > timezone.now():
+        if not self.has_expired:
             return self.expires - timezone.now()
         return None
+
+    @property
+    def has_expired(self):
+        return self.expires and self.expires <= timezone.now()
 
     def is_active(self):
         return self.active
@@ -254,7 +258,7 @@ class Organization(models.Model):
         if isinstance(request.auth, User):
             return False
 
-        if request.auth and request.auth.team_id == self.id:
+        if request.auth and request.auth.organization_id == self.id:
             return True
         return False
 
@@ -379,6 +383,10 @@ class OwnerBase(models.Model):
         else:
             raise ValueError("Owner must be either a User or an Organization")
 
+    @property
+    def is_team(self):
+        return isinstance(self.owner, Organization)
+
 
 class PasswordSecret(ExpiresBase):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="password_secrets")
@@ -402,7 +410,7 @@ class Notification(models.Model):
 
 
 class AuditLog(OwnerBase):
-    action = models.CharField(max_length=100)
+    action = models.CharField(max_length=300)
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from datetime import datetime, date, timedelta
 from decimal import Decimal
+from typing import Literal
 from uuid import uuid4
 from django.core.validators import MaxValueValidator
 from django.db import models
@@ -96,8 +97,6 @@ class InvoiceBase(OwnerBase):
     sort_code = models.CharField(max_length=8, blank=True, null=True)  # 12-34-56
     account_holder_name = models.CharField(max_length=100, blank=True, null=True)
     account_number = models.CharField(max_length=100, blank=True, null=True)
-    reference = models.CharField(max_length=100, blank=True, null=True)
-    invoice_number = models.CharField(max_length=100, blank=True, null=True)
     vat_number = models.CharField(max_length=100, blank=True, null=True)
     logo = models.ImageField(
         upload_to="invoice_logos",
@@ -118,6 +117,9 @@ class InvoiceBase(OwnerBase):
 
     discount_amount = models.DecimalField(max_digits=15, default=0, decimal_places=2)
     discount_percentage = models.DecimalField(default=0, max_digits=5, decimal_places=2, validators=[MaxValueValidator(100)])
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         abstract = True
@@ -146,15 +148,15 @@ class Invoice(InvoiceBase):
         ("paid", "Paid"),
     )
 
-    invoice_id = models.IntegerField(unique=True, blank=True, null=True)  # todo: add
+    reference = models.CharField(max_length=16, blank=True, null=True)
     date_due = models.DateField()
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="draft")
+    status_updated_at = models.DateTimeField(auto_now_add=True)
     invoice_recurring_profile = models.ForeignKey(
         "InvoiceRecurringProfile", related_name="generated_invoices", on_delete=models.SET_NULL, blank=True, null=True
     )
 
     def __str__(self):
-        invoice_id = self.invoice_id or self.id
         if self.client_name:
             client = self.client_name
         elif self.client_to:
@@ -162,7 +164,16 @@ class Invoice(InvoiceBase):
         else:
             client = "Unknown Client"
 
-        return f"Invoice #{invoice_id} for {client}"
+        return f"Invoice #{self.id} for {client}"
+
+    def set_status(self, status: str, save=True):
+        if status not in ["draft", "pending", "paid"]:
+            return False
+        self.status = status
+        self.status_updated_at = timezone.now()
+        if save:
+            self.save()
+        return self
 
     @property
     def dynamic_status(self):
